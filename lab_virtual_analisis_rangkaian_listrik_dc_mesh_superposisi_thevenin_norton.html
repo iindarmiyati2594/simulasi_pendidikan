@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Virtual Analisis Rangkaian Listrik DC — Mesh, Superposisi, Thevenin & Norton</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans, Space Grotesk & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f3e8ff 45%, #e0f2fe 100%);
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .font-heading {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .font-mono-math {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Palet Pastel Akademis Modern */
+        .bg-pastel-lavender { background-color: #f3e8ff; border-color: #d8b4fe; }
+        .bg-pastel-babyblue { background-color: #e0f2fe; border-color: #7dd3fc; }
+        .bg-pastel-mint     { background-color: #dcfce7; border-color: #86efac; }
+        .bg-pastel-coral    { background-color: #ffe4e6; border-color: #fda4af; }
+        .bg-pastel-butter   { background-color: #fef9c3; border-color: #fde047; }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+            cursor: pointer;
+            margin-top: -7px;
+            transition: transform 0.15s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.18);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+
+        /* Animasi Aliran Arus pada SVG */
+        @keyframes dashFlowCW {
+            to { stroke-dashoffset: -36; }
+        }
+        @keyframes dashFlowCCW {
+            to { stroke-dashoffset: 36; }
+        }
+        .flow-cw {
+            stroke-dasharray: 10 8;
+            animation: dashFlowCW 0.9s linear infinite;
+        }
+        .flow-ccw {
+            stroke-dasharray: 10 8;
+            animation: dashFlowCCW 0.9s linear infinite;
+        }
+
+        /* Animasi Panel Tab */
+        .tab-pane {
+            animation: fadeInUp 0.25s ease-out;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- HEADER APLIKASI -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <!-- Judul & Identitas -->
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-sky-500 text-white flex items-center justify-center font-heading font-bold text-xl shadow-md shrink-0">
+                    ⚡
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="bg-indigo-100 text-indigo-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            Rangkaian Listrik DC • Teknik Elektro & Instrumentasi
+                        </span>
+                    </div>
+                    <h1 class="text-lg sm:text-2xl font-heading font-bold text-slate-900 tracking-tight mt-0.5">
+                        Lab Virtual Analisis Rangkaian Linear
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Navigasi 5 Tab Utama -->
+            <nav class="flex flex-wrap bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200 gap-1">
+                <button onclick="switchMainTab('mesh')" id="nav-mesh" class="main-tab-btn px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow transition">
+                    1. Metode Mesh
+                </button>
+                <button onclick="switchMainTab('superposisi')" id="nav-superposisi" class="main-tab-btn px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-white transition">
+                    2. Superposisi
+                </button>
+                <button onclick="switchMainTab('thevenin')" id="nav-thevenin" class="main-tab-btn px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-white transition">
+                    3. Thevenin
+                </button>
+                <button onclick="switchMainTab('norton')" id="nav-norton" class="main-tab-btn px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-white transition">
+                    4. Norton
+                </button>
+                <button onclick="switchMainTab('latihan')" id="nav-latihan" class="main-tab-btn px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-white transition">
+                    5. Latihan Soal
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- KONTEN UTAMA -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+
+        <!-- ========================================================================= -->
+        <!-- TAB 1: METODE MESH (ARUS LOOP 2-LOOP)                                     -->
+        <!-- ========================================================================= -->
+        <section id="pane-mesh" class="tab-pane space-y-5">
+            <!-- Header Konsep -->
+            <div class="bg-pastel-lavender border rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <span class="text-xs font-extrabold text-purple-800 uppercase tracking-wider">Hukum Tegangan Kirchhoff (KVL)</span>
+                    <h2 class="text-xl sm:text-2xl font-heading font-bold text-slate-900">Analisis Arus Mesh (2 Loop)</h2>
+                    <p class="text-xs sm:text-sm text-slate-700 mt-0.5">
+                        Menentukan arus fiktif searah jarum jam (<span class="font-mono-math font-bold text-indigo-700">I₁</span> dan <span class="font-mono-math font-bold text-rose-600">I₂</span>) pada setiap loop tertutup untuk menghitung arus tiap cabang.
+                    </p>
+                </div>
+                <button onclick="resetMesh()" class="shrink-0 bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm transition">
+                    Reset Nilai Default
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <!-- Kolom Kiri (7 kolom): Diagram SVG Rangkaian 2-Loop + Kontrol Parameter -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Diagram Rangkaian T-Bridge (2 Mesh)</span>
+                            <div class="flex items-center gap-3 text-xs font-bold">
+                                <span class="flex items-center gap-1.5 text-indigo-700"><span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span> Loop 1 (I₁)</span>
+                                <span class="flex items-center gap-1.5 text-rose-600"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> Loop 2 (I₂)</span>
+                            </div>
+                        </div>
+
+                        <!-- SVG Interaktif Mesh -->
+                        <div class="bg-slate-50 rounded-2xl border border-slate-200 p-2 overflow-hidden">
+                            <svg id="svg-mesh" class="w-full h-64 sm:h-72" viewBox="0 0 600 280"></svg>
+                        </div>
+                    </div>
+
+                    <!-- Kontrol Slider Komponen Mesh -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-4">
+                        <h3 class="font-heading text-base font-bold text-slate-800">Parameter Sumber & Resistor</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- V1 -->
+                            <div class="bg-pastel-butter/60 border rounded-2xl p-3">
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span>Sumber Tegangan V₁</span>
+                                    <span id="mesh-val-v1" class="font-mono-math text-amber-900">24 V</span>
+                                </div>
+                                <input type="range" id="mesh-v1" min="0" max="48" step="2" value="24" oninput="updateMesh()">
+                            </div>
+                            <!-- V2 -->
+                            <div class="bg-pastel-butter/60 border rounded-2xl p-3">
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span>Sumber Tegangan V₂</span>
+                                    <span id="mesh-val-v2" class="font-mono-math text-amber-900">12 V</span>
+                                </div>
+                                <input type="range" id="mesh-v2" min="0" max="48" step="2" value="12" oninput="updateMesh()">
+                            </div>
+                            <!-- R1 -->
+                            <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span>Resistor Cabang Kiri (R₁)</span>
+                                    <span id="mesh-val-r1" class="font-mono-math text-sky-900">4 Ω</span>
+                                </div>
+                                <input type="range" id="mesh-r1" min="1" max="20" step="1" value="4" oninput="updateMesh()">
+                            </div>
+                            <!-- R2 -->
+                            <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span>Resistor Cabang Kanan (R₂)</span>
+                                    <span id="mesh-val-r2" class="font-mono-math text-sky-900">6 Ω</span>
+                                </div>
+                                <input type="range" id="mesh-r2" min="1" max="20" step="1" value="6" oninput="updateMesh()">
+                            </div>
+                            <!-- R3 -->
+                            <div class="sm:col-span-2 bg-pastel-mint/60 border rounded-2xl p-3">
+                                <div class="flex justify-between text-xs font-bold mb-1">
+                                    <span>Resistor Cabang Tengah / Bersama (R₃)</span>
+                                    <span id="mesh-val-r3" class="font-mono-math text-emerald-900">8 Ω</span>
+                                </div>
+                                <input type="range" id="mesh-r3" min="1" max="20" step="1" value="8" oninput="updateMesh()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan (5 kolom): Persamaan KVL Matriks 2x2 & Hasil Numerik -->
+                <div class="lg:col-span-5 space-y-4">
+                    <!-- Kartu Hasil Arus Utama -->
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="bg-pastel-lavender border rounded-2xl p-3.5 text-center shadow-sm">
+                            <div class="text-[11px] font-bold text-purple-900">Arus Loop 1 (I₁)</div>
+                            <div id="mesh-res-i1" class="font-mono-math text-xl sm:text-2xl font-bold text-indigo-700 mt-1">2.77 A</div>
+                            <div class="text-[10px] text-slate-600 mt-0.5">Cabang R₁</div>
+                        </div>
+                        <div class="bg-pastel-coral border rounded-2xl p-3.5 text-center shadow-sm">
+                            <div class="text-[11px] font-bold text-rose-900">Arus Loop 2 (I₂)</div>
+                            <div id="mesh-res-i2" class="font-mono-math text-xl sm:text-2xl font-bold text-rose-700 mt-1">0.77 A</div>
+                            <div class="text-[10px] text-slate-600 mt-0.5">Cabang R₂</div>
+                        </div>
+                        <div class="bg-pastel-mint border rounded-2xl p-3.5 text-center shadow-sm">
+                            <div class="text-[11px] font-bold text-emerald-900">Cabang Tengah (I₃)</div>
+                            <div id="mesh-res-i3" class="font-mono-math text-xl sm:text-2xl font-bold text-emerald-800 mt-1">2.00 A</div>
+                            <div id="mesh-dir-i3" class="text-[10px] font-bold text-emerald-700 mt-0.5">↓ Ke bawah</div>
+                        </div>
+                    </div>
+
+                    <!-- Langkah Penyelesaian Matematis -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-4">
+                        <h3 class="font-heading text-base font-bold text-slate-800 border-b border-slate-100 pb-2">
+                            Penurunan Persamaan KVL & Matriks
+                        </h3>
+
+                        <!-- Persamaan Loop 1 & Loop 2 -->
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <div class="font-bold text-indigo-700 mb-1">1. Persamaan KVL Mesh 1 (Loop Kiri):</div>
+                                <div class="font-mono-math text-slate-700">−V₁ + R₁·I₁ + R₃·(I₁ − I₂) = 0</div>
+                                <div id="mesh-eq1" class="font-mono-math font-bold text-slate-900 mt-1">12·I₁ − 8·I₂ = 24</div>
+                            </div>
+
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <div class="font-bold text-rose-600 mb-1">2. Persamaan KVL Mesh 2 (Loop Kanan):</div>
+                                <div class="font-mono-math text-slate-700">R₃·(I₂ − I₁) + R₂·I₂ + V₂ = 0</div>
+                                <div id="mesh-eq2" class="font-mono-math font-bold text-slate-900 mt-1">−8·I₁ + 14·I₂ = −12</div>
+                            </div>
+                        </div>
+
+                        <!-- Bentuk Matriks 2x2 -->
+                        <div class="bg-slate-900 text-slate-100 rounded-2xl p-4 space-y-2">
+                            <div class="text-[11px] font-bold text-sky-300 uppercase tracking-wider">3. Bentuk Matriks Resistansi [R][I] = [V]</div>
+                            <div id="mesh-matrix-display" class="font-mono-math text-xs sm:text-sm leading-relaxed overflow-x-auto py-1">
+                                <!-- Diisi via JS -->
+                            </div>
+                            <div id="mesh-det-display" class="text-[11px] font-mono-math text-amber-300 border-t border-slate-700 pt-2">
+                                Determinan Δ = 104 Ω²
+                            </div>
+                        </div>
+
+                        <!-- Arus Cabang Tengah -->
+                        <div class="bg-pastel-mint/70 border rounded-2xl p-3.5 text-xs space-y-1">
+                            <div class="font-bold text-emerald-950">4. Arus pada Resistor Bersama (R₃):</div>
+                            <div id="mesh-i3-formula" class="font-mono-math font-bold text-emerald-900">
+                                I₃ = I₁ − I₂ = 2.77 − 0.77 = 2.00 A (arah ke bawah)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 2: TEOREMA SUPERPOSISI                                                -->
+        <!-- ========================================================================= -->
+        <section id="pane-superposisi" class="tab-pane hidden space-y-5">
+            <!-- Header Konsep -->
+            <div class="bg-pastel-babyblue border rounded-3xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                    <span class="text-xs font-extrabold text-sky-800 uppercase tracking-wider">Prinsip Linearitas Rangkaian</span>
+                    <h2 class="text-xl sm:text-2xl font-heading font-bold text-slate-900">Teorema Superposisi (Dua Sumber Independen)</h2>
+                    <p class="text-xs sm:text-sm text-slate-700 mt-0.5">
+                        Respons total pada suatu elemen sama dengan jumlah aljabar respons dari tiap sumber independen yang bekerja sendiri (sumber tegangan lain di-<strong>short circuit</strong>).
+                    </p>
+                </div>
+            </div>
+
+            <!-- Pemilih Mode Interaktif Superposisi -->
+            <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Pilih Kondisi Sumber Aktif:</span>
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <button onclick="setSupMode('both')" id="sup-btn-both" class="sup-mode-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow transition">
+                        (a) Kedua Sumber Aktif (Total)
+                    </button>
+                    <button onclick="setSupMode('v1')" id="sup-btn-v1" class="sup-mode-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        (b) Hanya V₁ Aktif (V₂ Short)
+                    </button>
+                    <button onclick="setSupMode('v2')" id="sup-btn-v2" class="sup-mode-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        (c) Hanya V₂ Aktif (V₁ Short)
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <!-- Kiri (7 kolom): Diagram SVG Dinamis + Slider -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="sup-diagram-title" class="text-xs font-extrabold text-indigo-700 uppercase">Mode (a): V₁ dan V₂ Aktif Bersamaan</span>
+                            <span class="text-[11px] font-semibold text-slate-500">Target Analisis: Arus Cabang Tengah I₃</span>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl border border-slate-200 p-2">
+                            <svg id="svg-superposisi" class="w-full h-64 sm:h-72" viewBox="0 0 600 280"></svg>
+                        </div>
+                    </div>
+
+                    <!-- Kontrol Slider Superposisi -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-pastel-butter/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Sumber V₁ (Kiri)</span>
+                                <span id="sup-val-v1" class="font-mono-math text-amber-900">20 V</span>
+                            </div>
+                            <input type="range" id="sup-v1" min="4" max="40" step="2" value="20" oninput="updateSuperposisi()">
+                        </div>
+                        <div class="bg-pastel-coral/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Sumber V₂ (Kanan)</span>
+                                <span id="sup-val-v2" class="font-mono-math text-rose-900">10 V</span>
+                            </div>
+                            <input type="range" id="sup-v2" min="4" max="40" step="2" value="10" oninput="updateSuperposisi()">
+                        </div>
+                        <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor R₁</span>
+                                <span id="sup-val-r1" class="font-mono-math text-sky-900">4 Ω</span>
+                            </div>
+                            <input type="range" id="sup-r1" min="2" max="16" step="2" value="4" oninput="updateSuperposisi()">
+                        </div>
+                        <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor R₂</span>
+                                <span id="sup-val-r2" class="font-mono-math text-sky-900">4 Ω</span>
+                            </div>
+                            <input type="range" id="sup-r2" min="2" max="16" step="2" value="4" oninput="updateSuperposisi()">
+                        </div>
+                        <div class="sm:col-span-2 bg-pastel-mint/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor Cabang Tengah R₃</span>
+                                <span id="sup-val-r3" class="font-mono-math text-emerald-900">6 Ω</span>
+                            </div>
+                            <input type="range" id="sup-r3" min="2" max="16" step="2" value="6" oninput="updateSuperposisi()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kanan (5 kolom): Penjumlahan Aljabar Langkah Demi Langkah -->
+                <div class="lg:col-span-5 space-y-4">
+                    <!-- 3 Kartu Kontribusi Arus I3 -->
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="bg-pastel-butter border rounded-2xl p-3 text-center">
+                            <div class="text-[11px] font-bold text-amber-900">Kontribusi V₁ (I₃')</div>
+                            <div id="sup-res-i3a" class="font-mono-math text-lg sm:text-xl font-bold text-amber-800 mt-1">1.25 A</div>
+                            <div class="text-[10px] text-slate-600">V₂ di-short</div>
+                        </div>
+                        <div class="bg-pastel-coral border rounded-2xl p-3 text-center">
+                            <div class="text-[11px] font-bold text-rose-900">Kontribusi V₂ (I₃'')</div>
+                            <div id="sup-res-i3b" class="font-mono-math text-lg sm:text-xl font-bold text-rose-800 mt-1">0.63 A</div>
+                            <div class="text-[10px] text-slate-600">V₁ di-short</div>
+                        </div>
+                        <div class="bg-pastel-mint border rounded-2xl p-3 text-center">
+                            <div class="text-[11px] font-bold text-emerald-900">Arus Total (I₃)</div>
+                            <div id="sup-res-total" class="font-mono-math text-lg sm:text-xl font-bold text-emerald-800 mt-1">1.88 A</div>
+                            <div class="text-[10px] font-bold text-emerald-700">I₃' + I₃''</div>
+                        </div>
+                    </div>
+
+                    <!-- Rincian Perhitungan -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-3.5 text-xs">
+                        <h3 class="font-heading text-base font-bold text-slate-800 border-b border-slate-100 pb-2">
+                            Langkah Perhitungan Superposisi
+                        </h3>
+
+                        <!-- Langkah 1 -->
+                        <div class="bg-amber-50/80 border border-amber-200 rounded-2xl p-3.5 space-y-1">
+                            <div class="font-bold text-amber-900">Langkah 1: Hanya V₁ Aktif (V₂ = 0 V / Short Circuit)</div>
+                            <div id="sup-step1-detail" class="font-mono-math text-slate-700 leading-relaxed"></div>
+                        </div>
+
+                        <!-- Langkah 2 -->
+                        <div class="bg-rose-50/80 border border-rose-200 rounded-2xl p-3.5 space-y-1">
+                            <div class="font-bold text-rose-900">Langkah 2: Hanya V₂ Aktif (V₁ = 0 V / Short Circuit)</div>
+                            <div id="sup-step2-detail" class="font-mono-math text-slate-700 leading-relaxed"></div>
+                        </div>
+
+                        <!-- Langkah 3 -->
+                        <div class="bg-slate-900 text-white rounded-2xl p-4 space-y-1.5">
+                            <div class="text-[11px] font-bold text-emerald-300 uppercase">Langkah 3: Penjumlahan Aljabar Total</div>
+                            <div id="sup-step3-detail" class="font-mono-math text-xs sm:text-sm font-bold text-amber-200"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 3: TEOREMA THEVENIN                                                   -->
+        <!-- ========================================================================= -->
+        <section id="pane-thevenin" class="tab-pane hidden space-y-5">
+            <!-- Header Konsep -->
+            <div class="bg-pastel-mint border rounded-3xl p-4 sm:p-5">
+                <span class="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">Penyederhanaan Rangkaian Linear</span>
+                <h2 class="text-xl sm:text-2xl font-heading font-bold text-slate-900">Teorema Thevenin (Ekivalen Seri V<sub>th</sub> & R<sub>th</sub>)</h2>
+                <p class="text-xs sm:text-sm text-slate-700 mt-0.5">
+                    Rangkaian linear dua terminal (A–B) dapat digantikan oleh sebuah sumber tegangan ekivalen <strong>V<sub>th</sub></strong> yang terhubung seri dengan hambatan ekivalen <strong>R<sub>th</sub></strong>.
+                </p>
+            </div>
+
+            <!-- Toggle 4 Langkah Visualisasi Thevenin -->
+            <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-extrabold text-slate-500 uppercase">Tahap Analisis:</span>
+                <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+                    <button onclick="setThStep('orig')" id="th-btn-orig" class="th-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow transition">
+                        1. Rangkaian Asli
+                    </button>
+                    <button onclick="setThStep('vth')" id="th-btn-vth" class="th-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        2. Cari V<sub>th</sub> (Open A–B)
+                    </button>
+                    <button onclick="setThStep('rth')" id="th-btn-rth" class="th-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        3. Cari R<sub>th</sub> (Sumber Mati)
+                    </button>
+                    <button onclick="setThStep('eq')" id="th-btn-eq" class="th-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        4. Ekivalen Thevenin
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <!-- Kiri (7 kolom): Diagram SVG & Kontrol Slider -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="th-stage-label" class="text-xs font-extrabold text-emerald-700 uppercase">Tahap 1: Rangkaian Lengkap Terhubung ke Beban R<sub>L</sub></span>
+                            <span class="text-xs font-mono-math font-bold text-slate-500">Terminal A–B</span>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl border border-slate-200 p-2">
+                            <svg id="svg-thevenin" class="w-full h-64 sm:h-72" viewBox="0 0 600 280"></svg>
+                        </div>
+                    </div>
+
+                    <!-- Slider Komponen Thevenin -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-pastel-butter/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Sumber Tegangan V<sub>s</sub></span>
+                                <span id="th-val-vs" class="font-mono-math text-amber-900">30 V</span>
+                            </div>
+                            <input type="range" id="th-vs" min="6" max="60" step="2" value="30" oninput="updateThevenin()">
+                        </div>
+                        <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor Seri R₁</span>
+                                <span id="th-val-r1" class="font-mono-math text-sky-900">6 Ω</span>
+                            </div>
+                            <input type="range" id="th-r1" min="2" max="20" step="1" value="6" oninput="updateThevenin()">
+                        </div>
+                        <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor Paralel R₂</span>
+                                <span id="th-val-r2" class="font-mono-math text-sky-900">12 Ω</span>
+                            </div>
+                            <input type="range" id="th-r2" min="2" max="20" step="1" value="12" oninput="updateThevenin()">
+                        </div>
+                        <div class="bg-pastel-coral/70 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor Beban R<sub>L</sub> (Terminal A–B)</span>
+                                <span id="th-val-rl" class="font-mono-math text-rose-900">6 Ω</span>
+                            </div>
+                            <input type="range" id="th-rl" min="1" max="25" step="1" value="6" oninput="updateThevenin()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kanan (5 kolom): Hasil Perhitungan Vth, Rth, IL, dan PL -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="bg-pastel-butter border rounded-2xl p-3.5 text-center">
+                            <div class="text-[11px] font-bold text-amber-900">Tegangan Thevenin (V<sub>th</sub>)</div>
+                            <div id="th-res-vth" class="font-mono-math text-2xl font-bold text-amber-800 mt-1">20.00 V</div>
+                            <div class="text-[10px] text-slate-600">V<sub>OC</sub> pada terminal A–B</div>
+                        </div>
+                        <div class="bg-pastel-babyblue border rounded-2xl p-3.5 text-center">
+                            <div class="text-[11px] font-bold text-sky-900">Hambatan Thevenin (R<sub>th</sub>)</div>
+                            <div id="th-res-rth" class="font-mono-math text-2xl font-bold text-sky-800 mt-1">4.00 Ω</div>
+                            <div class="text-[10px] text-slate-600">R₁ ∥ R₂ dilihat dari A–B</div>
+                        </div>
+                        <div class="bg-pastel-mint border rounded-2xl p-3.5 text-center">
+                            <div class="text-[11px] font-bold text-emerald-900">Arus Beban (I<sub>L</sub>)</div>
+                            <div id="th-res-il" class="font-mono-math text-2xl font-bold text-emerald-800 mt-1">2.00 A</div>
+                            <div class="text-[10px] text-slate-600">V<sub>th</sub> / (R<sub>th</sub> + R<sub>L</sub>)</div>
+                        </div>
+                        <div class="bg-pastel-lavender border rounded-2xl p-3.5 text-center">
+                            <div class="text-[11px] font-bold text-purple-900">Daya Beban (P<sub>L</sub>)</div>
+                            <div id="th-res-pl" class="font-mono-math text-2xl font-bold text-purple-800 mt-1">24.00 W</div>
+                            <div class="text-[10px] text-slate-600">I<sub>L</sub>² × R<sub>L</sub></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-3 text-xs">
+                        <h3 class="font-heading text-base font-bold text-slate-800 border-b border-slate-100 pb-2">
+                            Analisis Bertahap Teorema Thevenin
+                        </h3>
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+                            <div class="font-bold text-amber-800">1. Mencari Tegangan Open-Circuit (V<sub>th</sub>):</div>
+                            <div id="th-calc-vth" class="font-mono-math text-slate-700 leading-relaxed"></div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+                            <div class="font-bold text-sky-800">2. Mencari Resistansi Ekivalen (R<sub>th</sub>):</div>
+                            <div id="th-calc-rth" class="font-mono-math text-slate-700 leading-relaxed"></div>
+                        </div>
+                        <div class="bg-slate-900 text-white p-4 rounded-2xl space-y-1.5">
+                            <div class="text-[11px] font-bold text-emerald-300 uppercase">3. Arus & Daya pada Beban R<sub>L</sub>:</div>
+                            <div id="th-calc-load" class="font-mono-math text-xs leading-relaxed text-slate-100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 4: TEOREMA NORTON                                                     -->
+        <!-- ========================================================================= -->
+        <section id="pane-norton" class="tab-pane hidden space-y-5">
+            <!-- Header Konsep -->
+            <div class="bg-pastel-coral border rounded-3xl p-4 sm:p-5">
+                <span class="text-xs font-extrabold text-rose-800 uppercase tracking-wider">Dualitas Ekivalen Rangkaian</span>
+                <h2 class="text-xl sm:text-2xl font-heading font-bold text-slate-900">Teorema Norton (Ekivalen Paralel I<sub>N</sub> & R<sub>N</sub>)</h2>
+                <p class="text-xs sm:text-sm text-slate-700 mt-0.5">
+                    Rangkaian linear dua terminal (A–B) dapat digantikan oleh sumber arus ekivalen <strong>I<sub>N</sub></strong> (arus hubung singkat A–B) yang terhubung paralel dengan hambatan <strong>R<sub>N</sub></strong>.
+                </p>
+            </div>
+
+            <!-- Toggle 4 Langkah Visualisasi Norton -->
+            <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-extrabold text-slate-500 uppercase">Tahap Analisis:</span>
+                <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+                    <button onclick="setNoStep('orig')" id="no-btn-orig" class="no-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white shadow transition">
+                        1. Rangkaian Asli
+                    </button>
+                    <button onclick="setNoStep('in')" id="no-btn-in" class="no-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        2. Cari I<sub>N</sub> (Short A–B)
+                    </button>
+                    <button onclick="setNoStep('rn')" id="no-btn-rn" class="no-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        3. Cari R<sub>N</sub> (Sumber Mati)
+                    </button>
+                    <button onclick="setNoStep('eq')" id="no-btn-eq" class="no-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        4. Ekivalen Norton
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <!-- Kiri (7 kolom): Diagram SVG & Slider -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="no-stage-label" class="text-xs font-extrabold text-rose-700 uppercase">Tahap 1: Rangkaian Lengkap Terhubung ke Beban R<sub>L</sub></span>
+                            <span class="text-xs font-mono-math font-bold text-slate-500">Terminal A–B</span>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl border border-slate-200 p-2">
+                            <svg id="svg-norton" class="w-full h-64 sm:h-72" viewBox="0 0 600 280"></svg>
+                        </div>
+                    </div>
+
+                    <!-- Slider Komponen Norton -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-pastel-butter/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Sumber Tegangan V<sub>s</sub></span>
+                                <span id="no-val-vs" class="font-mono-math text-amber-900">24 V</span>
+                            </div>
+                            <input type="range" id="no-vs" min="6" max="60" step="2" value="24" oninput="updateNorton()">
+                        </div>
+                        <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor Seri R₁</span>
+                                <span id="no-val-r1" class="font-mono-math text-sky-900">6 Ω</span>
+                            </div>
+                            <input type="range" id="no-r1" min="2" max="20" step="1" value="6" oninput="updateNorton()">
+                        </div>
+                        <div class="bg-pastel-babyblue/60 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor Paralel R₂</span>
+                                <span id="no-val-r2" class="font-mono-math text-sky-900">12 Ω</span>
+                            </div>
+                            <input type="range" id="no-r2" min="2" max="20" step="1" value="12" oninput="updateNorton()">
+                        </div>
+                        <div class="bg-pastel-mint/70 border rounded-2xl p-3">
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span>Resistor Beban R<sub>L</sub> (Terminal A–B)</span>
+                                <span id="no-val-rl" class="font-mono-math text-emerald-900">4 Ω</span>
+                            </div>
+                            <input type="range" id="no-rl" min="1" max="25" step="1" value="4" oninput="updateNorton()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kanan (5 kolom): Hasil Norton & Bukti Konversi Thevenin-Norton -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="bg-pastel-coral border rounded-2xl p-3 text-center">
+                            <div class="text-[11px] font-bold text-rose-900">Arus Norton (I<sub>N</sub>)</div>
+                            <div id="no-res-in" class="font-mono-math text-xl font-bold text-rose-800 mt-1">4.00 A</div>
+                            <div class="text-[10px] text-slate-600">I<sub>SC</sub> pada A–B</div>
+                        </div>
+                        <div class="bg-pastel-babyblue border rounded-2xl p-3 text-center">
+                            <div class="text-[11px] font-bold text-sky-900">Hambatan (R<sub>N</sub>)</div>
+                            <div id="no-res-rn" class="font-mono-math text-xl font-bold text-sky-800 mt-1">4.00 Ω</div>
+                            <div class="text-[10px] text-slate-600">R<sub>N</sub> = R<sub>th</sub></div>
+                        </div>
+                        <div class="bg-pastel-mint border rounded-2xl p-3 text-center">
+                            <div class="text-[11px] font-bold text-emerald-900">Arus Beban (I<sub>L</sub>)</div>
+                            <div id="no-res-il" class="font-mono-math text-xl font-bold text-emerald-800 mt-1">2.00 A</div>
+                            <div class="text-[10px] text-slate-600">Pembagi Arus</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-3 text-xs">
+                        <h3 class="font-heading text-base font-bold text-slate-800 border-b border-slate-100 pb-2">
+                            Analisis Bertahap Teorema Norton
+                        </h3>
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+                            <div class="font-bold text-rose-800">1. Mencari Arus Hubung Singkat (I<sub>N</sub> = I<sub>SC</sub>):</div>
+                            <div id="no-calc-in" class="font-mono-math text-slate-700 leading-relaxed"></div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+                            <div class="font-bold text-sky-800">2. Mencari Resistansi Norton (R<sub>N</sub>):</div>
+                            <div id="no-calc-rn" class="font-mono-math text-slate-700 leading-relaxed"></div>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+                            <div class="font-bold text-emerald-800">3. Aturan Pembagi Arus (Current Divider) pada Beban R<sub>L</sub>:</div>
+                            <div id="no-calc-il" class="font-mono-math text-slate-700 leading-relaxed"></div>
+                        </div>
+                        <div class="bg-slate-900 text-white p-4 rounded-2xl space-y-1">
+                            <div class="text-[11px] font-bold text-amber-300 uppercase">4. Bukti Transformasi Sumber (Thevenin ↔ Norton):</div>
+                            <div id="no-proof-th" class="font-mono-math text-xs text-sky-200 leading-relaxed"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 5: LATIHAN SOAL INTERAKTIF (NUMERIK & PEMBAHASAN)                     -->
+        <!-- ========================================================================= -->
+        <section id="pane-latihan" class="tab-pane hidden max-w-4xl mx-auto space-y-5">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="bg-indigo-100 text-indigo-800 text-xs font-extrabold px-3 py-1 rounded-full uppercase">Evaluasi Pemahaman Mahasiswa</span>
+                        <h2 class="font-heading text-xl sm:text-2xl font-bold text-slate-900 mt-1.5">Latihan Soal Numerik Analisis Rangkaian DC</h2>
+                    </div>
+                    <button onclick="generateRandomPractice()" class="bg-pastel-butter hover:bg-amber-200 text-amber-950 border border-amber-400 text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-sm transition">
+                        🔄 Acak Angka Soal Baru
+                    </button>
+                </div>
+
+                <!-- Kontainer 4 Kartu Soal -->
+                <div id="practice-cards-container" class="space-y-5"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white/80 border-t border-slate-200 py-4 px-4 mt-8 text-center text-xs font-semibold text-slate-500">
+        Lab Virtual Analisis Rangkaian Listrik DC • Metode Mesh, Teorema Superposisi, Teorema Thevenin & Teorema Norton
+    </footer>
+
+    <!-- JAVASCRIPT PERHITUNGAN, RENDER SVG & LATIHAN SOAL -->
+    <script>
+        // =========================================================================
+        // 1. NAVIGASI TAB UTAMA
+        // =========================================================================
+        function switchMainTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`pane-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.main-tab-btn').forEach(btn => {
+                btn.className = "main-tab-btn px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-white transition";
+            });
+            const active = document.getElementById(`nav-${tabId}`);
+            active.className = "main-tab-btn px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow transition";
+        }
+
+        // Helper menggambar simbol komponen listrik pada SVG
+        function svgVoltageSource(cx, cy, label, valueText, isShorted = false) {
+            if (isShorted) {
+                return `
+                    <line x1="${cx}" y1="${cy - 32}" x2="${cx}" y2="${cy + 32}" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 4"/>
+                    <rect x="${cx - 42}" y="${cy - 11}" width="84" height="22" rx="6" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"/>
+                    <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="10" font-weight="bold" fill="#b91c1c">${label} SHORT (0V)</text>
+                `;
+            }
+            return `
+                <line x1="${cx}" y1="${cy - 32}" x2="${cx}" y2="${cy - 20}" stroke="#334155" stroke-width="3"/>
+                <line x1="${cx}" y1="${cy + 20}" x2="${cx}" y2="${cy + 32}" stroke="#334155" stroke-width="3"/>
+                <circle cx="${cx}" cy="${cy}" r="20" fill="#fef9c3" stroke="#d97706" stroke-width="2.5"/>
+                <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="13" font-weight="bold" fill="#b45309">+</text>
+                <text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="14" font-weight="bold" fill="#0284c7">−</text>
+                <text x="${cx - 26}" y="${cy - 4}" text-anchor="end" font-size="12" font-weight="bold" fill="#1e293b">${label}</text>
+                <text x="${cx - 26}" y="${cy + 11}" text-anchor="end" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#b45309">${valueText}</text>
+            `;
+        }
+
+        function svgResistorH(cx, cy, label, valueText, color = "#e0f2fe", stroke = "#0284c7") {
+            return `
+                <rect x="${cx - 28}" y="${cy - 11}" width="56" height="22" rx="5" fill="${color}" stroke="${stroke}" stroke-width="2.5"/>
+                <text x="${cx}" y="${cy - 17}" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e293b">${label} = ${valueText}</text>
+            `;
+        }
+
+        function svgResistorV(cx, cy, label, valueText, color = "#dcfce7", stroke = "#059669", labelRight = true) {
+            const tx = labelRight ? cx + 18 : cx - 18;
+            const anchor = labelRight ? "start" : "end";
+            return `
+                <rect x="${cx - 11}" y="${cy - 28}" width="22" height="56" rx="5" fill="${color}" stroke="${stroke}" stroke-width="2.5"/>
+                <text x="${tx}" y="${cy - 2}" text-anchor="${anchor}" font-size="11" font-weight="bold" fill="#1e293b">${label}</text>
+                <text x="${tx}" y="${cy + 12}" text-anchor="${anchor}" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="${stroke}">${valueText}</text>
+            `;
+        }
+
+        // =========================================================================
+        // 2. LOGIKA TAB 1: METODE MESH (2 LOOP)
+        // =========================================================================
+        function resetMesh() {
+            document.getElementById('mesh-v1').value = 24;
+            document.getElementById('mesh-v2').value = 12;
+            document.getElementById('mesh-r1').value = 4;
+            document.getElementById('mesh-r2').value = 6;
+            document.getElementById('mesh-r3').value = 8;
+            updateMesh();
+        }
+
+        function updateMesh() {
+            const V1 = parseFloat(document.getElementById('mesh-v1').value);
+            const V2 = parseFloat(document.getElementById('mesh-v2').value);
+            const R1 = parseFloat(document.getElementById('mesh-r1').value);
+            const R2 = parseFloat(document.getElementById('mesh-r2').value);
+            const R3 = parseFloat(document.getElementById('mesh-r3').value);
+
+            document.getElementById('mesh-val-v1').textContent = `${V1} V`;
+            document.getElementById('mesh-val-v2').textContent = `${V2} V`;
+            document.getElementById('mesh-val-r1').textContent = `${R1} Ω`;
+            document.getElementById('mesh-val-r2').textContent = `${R2} Ω`;
+            document.getElementById('mesh-val-r3').textContent = `${R3} Ω`;
+
+            // Penyelesaian Matriks 2x2:
+            // (R1 + R3) I1 - R3 I2 = V1
+            // -R3 I1 + (R2 + R3) I2 = -V2
+            const a11 = R1 + R3;
+            const a12 = -R3;
+            const a21 = -R3;
+            const a22 = R2 + R3;
+            const b1 = V1;
+            const b2 = -V2;
+
+            const det = a11 * a22 - a12 * a21;
+            const I1 = (b1 * a22 - b2 * a12) / det;
+            const I2 = (a11 * b2 - a21 * b1) / det;
+            const I3 = I1 - I2; // Positif = ke bawah
+
+            document.getElementById('mesh-res-i1').textContent = `${I1.toFixed(2)} A`;
+            document.getElementById('mesh-res-i2').textContent = `${I2.toFixed(2)} A`;
+            document.getElementById('mesh-res-i3').textContent = `${Math.abs(I3).toFixed(2)} A`;
+
+            const dirText = Math.abs(I3) < 0.005 ? "• Seimbang (0 A)" : (I3 > 0 ? "↓ Ke bawah" : "↑ Ke atas");
+            document.getElementById('mesh-dir-i3').textContent = dirText;
+
+            document.getElementById('mesh-eq1').textContent = `${a11}·I₁ − ${R3}·I₂ = ${V1}`;
+            document.getElementById('mesh-eq2').textContent = `−${R3}·I₁ + ${a22}·I₂ = ${-V2}`;
+            document.getElementById('mesh-det-display').textContent = `Determinan Δ = (${a11}×${a22}) − (${a12}×${a21}) = ${det} Ω²`;
+
+            document.getElementById('mesh-matrix-display').innerHTML = `
+                ┌             ┐ ┌    ┐   ┌      ┐<br>
+                │ ${String(a11).padStart(3,' ')}   ${String(a12).padStart(4,' ')} │ │ I₁ │ = │ ${String(b1).padStart(4,' ')} │<br>
+                │ ${String(a21).padStart(3,' ')}   ${String(a22).padStart(4,' ')} │ │ I₂ │   │ ${String(b2).padStart(4,' ')} │<br>
+                └             ┘ └    ┘   └      ┘
+            `;
+
+            document.getElementById('mesh-i3-formula').textContent =
+                `I₃ = I₁ − I₂ = (${I1.toFixed(2)}) − (${I2.toFixed(2)}) = ${I3.toFixed(2)} A (${I3 >= 0 ? 'ke bawah' : 'ke atas'})`;
+
+            renderMeshSVG(V1, V2, R1, R2, R3, I1, I2, I3);
+        }
+
+        function renderMeshSVG(V1, V2, R1, R2, R3, I1, I2, I3) {
+            const svg = document.getElementById('svg-mesh');
+            const c1Class = Math.abs(I1) > 0.01 ? (I1 > 0 ? 'flow-cw' : 'flow-ccw') : '';
+            const c2Class = Math.abs(I2) > 0.01 ? (I2 > 0 ? 'flow-cw' : 'flow-ccw') : '';
+
+            svg.innerHTML = `
+                <!-- Kawat Utama Rangkaian 2-Loop -->
+                <rect x="110" y="45" width="380" height="190" rx="8" fill="none" stroke="#334155" stroke-width="3.5"/>
+                <line x1="300" y1="45" x2="300" y2="235" stroke="#334155" stroke-width="3.5"/>
+
+                <!-- Node Simpul Atas & Bawah -->
+                <circle cx="300" cy="45" r="5" fill="#0f172a"/>
+                <circle cx="300" cy="235" r="5" fill="#0f172a"/>
+
+                <!-- Sumber V1 (Kiri) & V2 (Kanan) -->
+                ${svgVoltageSource(110, 140, 'V₁', `${V1}V`)}
+                <g transform="translate(490, 140)">
+                    <line x1="0" y1="-32" x2="0" y2="-20" stroke="#334155" stroke-width="3"/>
+                    <line x1="0" y1="20" x2="0" y2="32" stroke="#334155" stroke-width="3"/>
+                    <circle cx="0" cy="0" r="20" fill="#fef9c3" stroke="#d97706" stroke-width="2.5"/>
+                    <text x="0" y="-5" text-anchor="middle" font-size="13" font-weight="bold" fill="#b45309">+</text>
+                    <text x="0" y="13" text-anchor="middle" font-size="14" font-weight="bold" fill="#0284c7">−</text>
+                    <text x="26" y="-4" text-anchor="start" font-size="12" font-weight="bold" fill="#1e293b">V₂</text>
+                    <text x="26" y="11" text-anchor="start" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#b45309">${V2}V</text>
+                </g>
+
+                <!-- Resistor R1, R2, R3 -->
+                ${svgResistorH(205, 45, 'R₁', `${R1}Ω`)}
+                ${svgResistorH(395, 45, 'R₂', `${R2}Ω`)}
+                ${svgResistorV(300, 140, 'R₃', `${R3}Ω`, '#dcfce7', '#059669', true)}
+
+                <!-- Panah Loop Mesh 1 (Kiri) -->
+                <g transform="translate(205, 145)">
+                    <circle cx="0" cy="0" r="38" fill="none" stroke="#4f46e5" stroke-width="3" class="${c1Class}"/>
+                    <polygon points="34,-8 43,2 31,4" fill="#4f46e5"/>
+                    <text x="0" y="-4" text-anchor="middle" font-size="12" font-weight="bold" fill="#3730a3">Mesh 1</text>
+                    <text x="0" y="12" text-anchor="middle" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#4f46e5">I₁=${I1.toFixed(2)}A</text>
+                </g>
+
+                <!-- Panah Loop Mesh 2 (Kanan) -->
+                <g transform="translate(395, 145)">
+                    <circle cx="0" cy="0" r="38" fill="none" stroke="#e11d48" stroke-width="3" class="${c2Class}"/>
+                    <polygon points="34,-8 43,2 31,4" fill="#e11d48"/>
+                    <text x="0" y="-4" text-anchor="middle" font-size="12" font-weight="bold" fill="#9f1239">Mesh 2</text>
+                    <text x="0" y="12" text-anchor="middle" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#e11d48">I₂=${I2.toFixed(2)}A</text>
+                </g>
+
+                <!-- Indikator Arus Cabang Tengah I3 -->
+                <rect x="242" y="246" width="116" height="22" rx="8" fill="#dcfce7" stroke="#059669" stroke-width="1.5"/>
+                <text x="300" y="261" text-anchor="middle" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#065f46">
+                    I₃ = ${Math.abs(I3).toFixed(2)}A ${I3 >= 0 ? '↓' : '↑'}
+                </text>
+            `;
+        }
+
+        // =========================================================================
+        // 3. LOGIKA TAB 2: TEOREMA SUPERPOSISI
+        // =========================================================================
+        let supMode = 'both'; // 'both', 'v1', 'v2'
+
+        function setSupMode(mode) {
+            supMode = mode;
+            document.querySelectorAll('.sup-mode-btn').forEach(btn => {
+                btn.className = "sup-mode-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+            });
+            document.getElementById(`sup-btn-${mode}`).className = "sup-mode-btn flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 text-white shadow transition";
+            updateSuperposisi();
+        }
+
+        function updateSuperposisi() {
+            const V1 = parseFloat(document.getElementById('sup-v1').value);
+            const V2 = parseFloat(document.getElementById('sup-v2').value);
+            const R1 = parseFloat(document.getElementById('sup-r1').value);
+            const R2 = parseFloat(document.getElementById('sup-r2').value);
+            const R3 = parseFloat(document.getElementById('sup-r3').value);
+
+            document.getElementById('sup-val-v1').textContent = `${V1} V`;
+            document.getElementById('sup-val-v2').textContent = `${V2} V`;
+            document.getElementById('sup-val-r1').textContent = `${R1} Ω`;
+            document.getElementById('sup-val-r2').textContent = `${R2} Ω`;
+            document.getElementById('sup-val-r3').textContent = `${R3} Ω`;
+
+            // Kasus 1: Hanya V1 aktif (V2 di-short) -> R2 || R3 seri dengan R1
+            const Rp1 = (R2 * R3) / (R2 + R3);
+            const Rtot1 = R1 + Rp1;
+            const Itot1 = V1 / Rtot1;
+            const I3_prime = Itot1 * (R2 / (R2 + R3)); // Arus ke bawah pada R3
+
+            // Kasus 2: Hanya V2 aktif (V1 di-short) -> R1 || R3 seri dengan R2
+            const Rp2 = (R1 * R3) / (R1 + R3);
+            const Rtot2 = R2 + Rp2;
+            const Itot2 = V2 / Rtot2;
+            const I3_double_prime = Itot2 * (R1 / (R1 + R3)); // Arus ke bawah pada R3 (karena + V2 di atas)
+
+            const I3_total = I3_prime + I3_double_prime;
+
+            document.getElementById('sup-res-i3a').textContent = `${I3_prime.toFixed(2)} A ↓`;
+            document.getElementById('sup-res-i3b').textContent = `${I3_double_prime.toFixed(2)} A ↓`;
+            document.getElementById('sup-res-total').textContent = `${I3_total.toFixed(2)} A ↓`;
+
+            document.getElementById('sup-step1-detail').innerHTML = `
+                R<sub>p1</sub> = R₂ ∥ R₃ = (${R2}×${R3})/(${R2}+${R3}) = ${Rp1.toFixed(2)} Ω<br>
+                I<sub>tot1</sub> = V₁ / (R₁ + R<sub>p1</sub>) = ${V1} / ${(R1 + Rp1).toFixed(2)} = ${Itot1.toFixed(2)} A<br>
+                <strong>I₃' = ${Itot1.toFixed(2)} × [${R2}/(${R2}+${R3})] = ${I3_prime.toFixed(2)} A (ke bawah)</strong>
+            `;
+
+            document.getElementById('sup-step2-detail').innerHTML = `
+                R<sub>p2</sub> = R₁ ∥ R₃ = (${R1}×${R3})/(${R1}+${R3}) = ${Rp2.toFixed(2)} Ω<br>
+                I<sub>tot2</sub> = V₂ / (R₂ + R<sub>p2</sub>) = ${V2} / ${(R2 + Rp2).toFixed(2)} = ${Itot2.toFixed(2)} A<br>
+                <strong>I₃'' = ${Itot2.toFixed(2)} × [${R1}/(${R1}+${R3})] = ${I3_double_prime.toFixed(2)} A (ke bawah)</strong>
+            `;
+
+            document.getElementById('sup-step3-detail').textContent =
+                `I₃ (Total) = I₃' + I₃'' = ${I3_prime.toFixed(2)} + ${I3_double_prime.toFixed(2)} = ${I3_total.toFixed(2)} A (ke bawah)`;
+
+            const titles = {
+                both: 'Mode (a): Kedua Sumber V₁ dan V₂ Aktif Bersamaan',
+                v1: 'Mode (b): Hanya Sumber V₁ Aktif (V₂ Diganti Kawat Short Circuit)',
+                v2: 'Mode (c): Hanya Sumber V₂ Aktif (V₁ Diganti Kawat Short Circuit)'
+            };
+            document.getElementById('sup-diagram-title').textContent = titles[supMode];
+
+            renderSuperposisiSVG(V1, V2, R1, R2, R3, I3_prime, I3_double_prime, I3_total);
+        }
+
+        function renderSuperposisiSVG(V1, V2, R1, R2, R3, I3a, I3b, I3tot) {
+            const svg = document.getElementById('svg-superposisi');
+            const v1Short = (supMode === 'v2');
+            const v2Short = (supMode === 'v1');
+            const activeI3 = supMode === 'both' ? I3tot : (supMode === 'v1' ? I3a : I3b);
+            const activeLabel = supMode === 'both' ? `I₃ = ${I3tot.toFixed(2)}A ↓` : (supMode === 'v1' ? `I₃' = ${I3a.toFixed(2)}A ↓` : `I₃'' = ${I3b.toFixed(2)}A ↓`);
+
+            svg.innerHTML = `
+                <!-- Kawat Rangkaian -->
+                <rect x="115" y="45" width="370" height="190" rx="8" fill="none" stroke="#334155" stroke-width="3.5"/>
+                <line x1="300" y1="45" x2="300" y2="235" stroke="#334155" stroke-width="3.5"/>
+
+                <!-- Aliran Animasi pada Cabang Tengah R3 -->
+                <line x1="300" y1="52" x2="300" y2="228" stroke="#10b981" stroke-width="4" class="flow-cw"/>
+
+                <!-- Sumber V1 (Kiri) -->
+                ${svgVoltageSource(115, 140, 'V₁', `${V1}V`, v1Short)}
+
+                <!-- Sumber V2 (Kanan) -->
+                ${v2Short ? `
+                    <line x1="485" y1="108" x2="485" y2="172" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 4"/>
+                    <rect x="443" y="129" width="84" height="22" rx="6" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"/>
+                    <text x="485" y="144" text-anchor="middle" font-size="10" font-weight="bold" fill="#b91c1c">V₂ SHORT (0V)</text>
+                ` : `
+                    <g transform="translate(485, 140)">
+                        <line x1="0" y1="-32" x2="0" y2="-20" stroke="#334155" stroke-width="3"/>
+                        <line x1="0" y1="20" x2="0" y2="32" stroke="#334155" stroke-width="3"/>
+                        <circle cx="0" cy="0" r="20" fill="#ffe4e6" stroke="#e11d48" stroke-width="2.5"/>
+                        <text x="0" y="-5" text-anchor="middle" font-size="13" font-weight="bold" fill="#be123c">+</text>
+                        <text x="0" y="13" text-anchor="middle" font-size="14" font-weight="bold" fill="#0284c7">−</text>
+                        <text x="26" y="-4" text-anchor="start" font-size="12" font-weight="bold" fill="#1e293b">V₂</text>
+                        <text x="26" y="11" text-anchor="start" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#be123c">${V2}V</text>
+                    </g>
+                `}
+
+                <!-- Resistor -->
+                ${svgResistorH(208, 45, 'R₁', `${R1}Ω`)}
+                ${svgResistorH(392, 45, 'R₂', `${R2}Ω`)}
+                ${svgResistorV(300, 140, 'R₃', `${R3}Ω`, '#dcfce7', '#059669', true)}
+
+                <!-- Panah Kontribusi Kiri & Kanan -->
+                ${!v1Short ? `
+                    <line x1="155" y1="62" x2="250" y2="62" stroke="#d97706" stroke-width="3" class="flow-cw"/>
+                    <text x="202" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#b45309">Kontribusi V₁ ➔</text>
+                ` : ''}
+                ${!v2Short ? `
+                    <line x1="445" y1="62" x2="350" y2="62" stroke="#e11d48" stroke-width="3" class="flow-cw"/>
+                    <text x="398" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#be123c">⬅ Kontribusi V₂</text>
+                ` : ''}
+
+                <!-- Hasil Arus Cabang Tengah -->
+                <rect x="235" y="246" width="130" height="24" rx="8" fill="#0f172a"/>
+                <text x="300" y="262" text-anchor="middle" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#34d399">
+                    ${activeLabel}
+                </text>
+            `;
+        }
+
+        // =========================================================================
+        // 4. LOGIKA TAB 3: TEOREMA THEVENIN
+        // =========================================================================
+        let thStep = 'orig'; // 'orig', 'vth', 'rth', 'eq'
+
+        function setThStep(step) {
+            thStep = step;
+            document.querySelectorAll('.th-step-btn').forEach(btn => {
+                btn.className = "th-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+            });
+            document.getElementById(`th-btn-${step}`).className = "th-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow transition";
+            updateThevenin();
+        }
+
+        function updateThevenin() {
+            const Vs = parseFloat(document.getElementById('th-vs').value);
+            const R1 = parseFloat(document.getElementById('th-r1').value);
+            const R2 = parseFloat(document.getElementById('th-r2').value);
+            const RL = parseFloat(document.getElementById('th-rl').value);
+
+            document.getElementById('th-val-vs').textContent = `${Vs} V`;
+            document.getElementById('th-val-r1').textContent = `${R1} Ω`;
+            document.getElementById('th-val-r2').textContent = `${R2} Ω`;
+            document.getElementById('th-val-rl').textContent = `${RL} Ω`;
+
+            // Pembagi tegangan saat A-B dibuka (Open Circuit)
+            const Vth = Vs * (R2 / (R1 + R2));
+            // R1 paralel R2 saat Vs di-short
+            const Rth = (R1 * R2) / (R1 + R2);
+            // Arus beban IL & Daya beban PL
+            const IL = Vth / (Rth + RL);
+            const PL = IL * IL * RL;
+
+            document.getElementById('th-res-vth').textContent = `${Vth.toFixed(2)} V`;
+            document.getElementById('th-res-rth').textContent = `${Rth.toFixed(2)} Ω`;
+            document.getElementById('th-res-il').textContent = `${IL.toFixed(2)} A`;
+            document.getElementById('th-res-pl').textContent = `${PL.toFixed(2)} W`;
+
+            document.getElementById('th-calc-vth').innerHTML = `
+                Beban R<sub>L</sub> dilepas (Open Circuit A–B):<br>
+                V<sub>th</sub> = V<sub>s</sub> × [R₂ / (R₁ + R₂)] = ${Vs} × [${R2} / (${R1} + ${R2})] = <strong>${Vth.toFixed(2)} V</strong>
+            `;
+            document.getElementById('th-calc-rth').innerHTML = `
+                Sumber V<sub>s</sub> di-short circuit (0 V):<br>
+                R<sub>th</sub> = R₁ ∥ R₂ = (${R1} × ${R2}) / (${R1} + ${R2}) = <strong>${Rth.toFixed(2)} Ω</strong>
+            `;
+            document.getElementById('th-calc-load').innerHTML = `
+                I<sub>L</sub> = V<sub>th</sub> / (R<sub>th</sub> + R<sub>L</sub>) = ${Vth.toFixed(2)} / (${Rth.toFixed(2)} + ${RL}) = <strong>${IL.toFixed(2)} A</strong><br>
+                P<sub>L</sub> = I<sub>L</sub>² × R<sub>L</sub> = (${IL.toFixed(2)})² × ${RL} = <strong>${PL.toFixed(2)} Watt</strong>
+            `;
+
+            const labels = {
+                orig: 'Tahap 1: Rangkaian Asli dengan Beban RL di Terminal A–B',
+                vth: 'Tahap 2: Beban RL Dilepas (Open Circuit) untuk Mengukur Vth',
+                rth: 'Tahap 3: Sumber Vs Dimatikan (Short Circuit) untuk Menghitung Rth',
+                eq: 'Tahap 4: Rangkaian Ekivalen Thevenin (Vth Seri Rth) Terhubung ke RL'
+            };
+            document.getElementById('th-stage-label').textContent = labels[thStep];
+
+            renderTheveninSVG(Vs, R1, R2, RL, Vth, Rth, IL);
+        }
+
+        function renderTheveninSVG(Vs, R1, R2, RL, Vth, Rth, IL) {
+            const svg = document.getElementById('svg-thevenin');
+
+            if (thStep === 'eq') {
+                // Gambar Rangkaian Ekivalen Thevenin yang sudah disederhanakan!
+                svg.innerHTML = `
+                    <rect x="140" y="55" width="320" height="170" rx="10" fill="none" stroke="#059669" stroke-width="3.5"/>
+                    <line x1="140" y1="55" x2="460" y2="55" stroke="#10b981" stroke-width="4" class="flow-cw"/>
+
+                    ${svgVoltageSource(140, 140, 'Vth', `${Vth.toFixed(2)}V`)}
+                    ${svgResistorH(280, 55, 'Rth', `${Rth.toFixed(2)}Ω`, '#dcfce7', '#059669')}
+                    ${svgResistorV(460, 140, 'RL', `${RL}Ω`, '#ffe4e6', '#e11d48', true)}
+
+                    <!-- Terminal A & B -->
+                    <circle cx="385" cy="55" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                    <text x="385" y="42" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">A</text>
+                    <circle cx="385" cy="225" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                    <text x="385" y="246" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">B</text>
+
+                    <rect x="205" y="242" width="190" height="24" rx="8" fill="#065f46"/>
+                    <text x="300" y="258" text-anchor="middle" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#fde047">
+                        Arus Beban IL = ${IL.toFixed(2)} A
+                    </text>
+                `;
+                return;
+            }
+
+            const showLoad = (thStep === 'orig');
+            const shortVs = (thStep === 'rth');
+
+            svg.innerHTML = `
+                <!-- Bagian Kiri Rangkaian (Dalam Kotak Thevenin) -->
+                <rect x="75" y="30" width="295" height="220" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="2" stroke-dasharray="6 4"/>
+                <text x="90" y="48" font-size="10" font-weight="bold" fill="#059669">Jaringan Linear Aktif (Kiri A–B)</text>
+
+                <polyline points="120,65 390,65" fill="none" stroke="#334155" stroke-width="3.5"/>
+                <polyline points="120,225 390,225" fill="none" stroke="#334155" stroke-width="3.5"/>
+                <line x1="120" y1="65" x2="120" y2="225" stroke="#334155" stroke-width="3.5"/>
+                <line x1="310" y1="65" x2="310" y2="225" stroke="#334155" stroke-width="3.5"/>
+
+                ${svgVoltageSource(120, 145, 'Vs', `${Vs}V`, shortVs)}
+                ${svgResistorH(215, 65, 'R₁', `${R1}Ω`)}
+                ${svgResistorV(310, 145, 'R₂', `${R2}Ω`, '#e0f2fe', '#0284c7', false)}
+
+                <!-- Terminal A dan B -->
+                <circle cx="390" cy="65" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                <text x="390" y="50" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">A</text>
+                <circle cx="390" cy="225" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                <text x="390" y="246" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">B</text>
+
+                ${showLoad ? `
+                    <polyline points="390,65 495,65 495,225 390,225" fill="none" stroke="#334155" stroke-width="3.5"/>
+                    <line x1="495" y1="75" x2="495" y2="215" stroke="#10b981" stroke-width="3.5" class="flow-cw"/>
+                    ${svgResistorV(495, 145, 'RL', `${RL}Ω`, '#ffe4e6', '#e11d48', true)}
+                ` : `
+                    <!-- Indikator Pengukuran pada Terminal Terbuka A-B -->
+                    <line x1="396" y1="65" x2="455" y2="65" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
+                    <line x1="396" y1="225" x2="455" y2="225" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
+                    <rect x="420" y="122" width="145" height="44" rx="10" fill="${thStep === 'vth' ? '#fef9c3' : '#e0f2fe'}" stroke="${thStep === 'vth' ? '#d97706' : '#0284c7'}" stroke-width="2"/>
+                    <text x="492" y="140" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e293b">
+                        ${thStep === 'vth' ? 'Voltmeter Open A–B' : 'Ohmmeter A–B'}
+                    </text>
+                    <text x="492" y="157" text-anchor="middle" font-size="12" font-family="JetBrains Mono" font-weight="bold" fill="${thStep === 'vth' ? '#b45309' : '#0369a1'}">
+                        ${thStep === 'vth' ? `Vth = ${Vth.toFixed(2)} V` : `Rth = ${Rth.toFixed(2)} Ω`}
+                    </text>
+                `}
+            `;
+        }
+
+        // =========================================================================
+        // 5. LOGIKA TAB 4: TEOREMA NORTON
+        // =========================================================================
+        let noStep = 'orig'; // 'orig', 'in', 'rn', 'eq'
+
+        function setNoStep(step) {
+            noStep = step;
+            document.querySelectorAll('.no-step-btn').forEach(btn => {
+                btn.className = "no-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition";
+            });
+            document.getElementById(`no-btn-${step}`).className = "no-step-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white shadow transition";
+            updateNorton();
+        }
+
+        function updateNorton() {
+            const Vs = parseFloat(document.getElementById('no-vs').value);
+            const R1 = parseFloat(document.getElementById('no-r1').value);
+            const R2 = parseFloat(document.getElementById('no-r2').value);
+            const RL = parseFloat(document.getElementById('no-rl').value);
+
+            document.getElementById('no-val-vs').textContent = `${Vs} V`;
+            document.getElementById('no-val-r1').textContent = `${R1} Ω`;
+            document.getElementById('no-val-r2').textContent = `${R2} Ω`;
+            document.getElementById('no-val-rl').textContent = `${RL} Ω`;
+
+            // Saat A-B di-short circuit, R2 terhubung singkat (arus lewat kawat short)
+            // Sehingga IN = Vs / R1
+            const IN = Vs / R1;
+            const RN = (R1 * R2) / (R1 + R2);
+            // Aturan Pembagi Arus (Current Divider)
+            const IL = IN * (RN / (RN + RL));
+            const Vth_check = IN * RN;
+
+            document.getElementById('no-res-in').textContent = `${IN.toFixed(2)} A`;
+            document.getElementById('no-res-rn').textContent = `${RN.toFixed(2)} Ω`;
+            document.getElementById('no-res-il').textContent = `${IL.toFixed(2)} A`;
+
+            document.getElementById('no-calc-in').innerHTML = `
+                Terminal A–B dihubung singkat (R₂ ter-bypass):<br>
+                I<sub>N</sub> = I<sub>SC</sub> = V<sub>s</sub> / R₁ = ${Vs} / ${R1} = <strong>${IN.toFixed(2)} A</strong>
+            `;
+            document.getElementById('no-calc-rn').innerHTML = `
+                Sumber V<sub>s</sub> dimatikan (0 V), dilihat dari A–B:<br>
+                R<sub>N</sub> = R₁ ∥ R₂ = (${R1} × ${R2}) / (${R1} + ${R2}) = <strong>${RN.toFixed(2)} Ω</strong>
+            `;
+            document.getElementById('no-calc-il').innerHTML = `
+                I<sub>L</sub> = I<sub>N</sub> × [R<sub>N</sub> / (R<sub>N</sub> + R<sub>L</sub>)] = ${IN.toFixed(2)} × [${RN.toFixed(2)} / (${RN.toFixed(2)} + ${RL})] = <strong>${IL.toFixed(2)} A</strong>
+            `;
+            document.getElementById('no-proof-th').innerHTML = `
+                V<sub>th</sub> = I<sub>N</sub> × R<sub>N</sub> = ${IN.toFixed(2)} A × ${RN.toFixed(2)} Ω = <strong>${Vth_check.toFixed(2)} V</strong><br>
+                (Sama persis dengan tegangan open-circuit Thevenin!)
+            `;
+
+            const labels = {
+                orig: 'Tahap 1: Rangkaian Asli dengan Beban RL di Terminal A–B',
+                in: 'Tahap 2: Terminal A–B Di-Short Circuit untuk Mengukur Arus Norton (IN)',
+                rn: 'Tahap 3: Sumber Vs Dimatikan untuk Menghitung Hambatan Norton (RN)',
+                eq: 'Tahap 4: Rangkaian Ekivalen Norton (IN Paralel RN) dengan Beban RL'
+            };
+            document.getElementById('no-stage-label').textContent = labels[noStep];
+
+            renderNortonSVG(Vs, R1, R2, RL, IN, RN, IL);
+        }
+
+        function renderNortonSVG(Vs, R1, R2, RL, IN, RN, IL) {
+            const svg = document.getElementById('svg-norton');
+
+            if (noStep === 'eq') {
+                // Ekivalen Norton: Sumber Arus IN paralel dengan RN dan RL
+                svg.innerHTML = `
+                    <rect x="130" y="55" width="340" height="170" rx="10" fill="none" stroke="#e11d48" stroke-width="3.5"/>
+                    <line x1="295" y1="55" x2="295" y2="225" stroke="#334155" stroke-width="3.5"/>
+
+                    <!-- Simbol Sumber Arus IN (Panah ke atas dalam lingkaran) -->
+                    <circle cx="130" cy="140" r="22" fill="#ffe4e6" stroke="#e11d48" stroke-width="2.5"/>
+                    <line x1="130" y1="152" x2="130" y2="128" stroke="#be123c" stroke-width="3"/>
+                    <polygon points="130,123 125,132 135,132" fill="#be123c"/>
+                    <text x="100" y="136" text-anchor="end" font-size="12" font-weight="bold" fill="#1e293b">IN</text>
+                    <text x="100" y="151" text-anchor="end" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#be123c">${IN.toFixed(2)}A</text>
+
+                    <!-- Resistor Paralel RN & Beban RL -->
+                    ${svgResistorV(295, 140, 'RN', `${RN.toFixed(2)}Ω`, '#e0f2fe', '#0284c7', false)}
+                    ${svgResistorV(470, 140, 'RL', `${RL}Ω`, '#dcfce7', '#059669', true)}
+
+                    <!-- Aliran Arus ke Beban -->
+                    <line x1="380" y1="55" x2="470" y2="55" stroke="#10b981" stroke-width="4" class="flow-cw"/>
+
+                    <!-- Terminal A & B -->
+                    <circle cx="385" cy="55" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                    <text x="385" y="42" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">A</text>
+                    <circle cx="385" cy="225" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                    <text x="385" y="246" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">B</text>
+
+                    <rect x="205" y="242" width="190" height="24" rx="8" fill="#881337"/>
+                    <text x="300" y="258" text-anchor="middle" font-size="11" font-family="JetBrains Mono" font-weight="bold" fill="#fde047">
+                        Arus Beban IL = ${IL.toFixed(2)} A
+                    </text>
+                `;
+                return;
+            }
+
+            const shortVs = (noStep === 'rn');
+
+            svg.innerHTML = `
+                <rect x="75" y="30" width="295" height="220" rx="14" fill="#fff1f2" stroke="#fda4af" stroke-width="2" stroke-dasharray="6 4"/>
+                <text x="90" y="48" font-size="10" font-weight="bold" fill="#be123c">Jaringan Linear Aktif (Kiri A–B)</text>
+
+                <polyline points="120,65 390,65" fill="none" stroke="#334155" stroke-width="3.5"/>
+                <polyline points="120,225 390,225" fill="none" stroke="#334155" stroke-width="3.5"/>
+                <line x1="120" y1="65" x2="120" y2="225" stroke="#334155" stroke-width="3.5"/>
+                <line x1="310" y1="65" x2="310" y2="225" stroke="#334155" stroke-width="3.5"/>
+
+                ${svgVoltageSource(120, 145, 'Vs', `${Vs}V`, shortVs)}
+                ${svgResistorH(215, 65, 'R₁', `${R1}Ω`)}
+                ${svgResistorV(310, 145, 'R₂', `${R2}Ω`, '#e0f2fe', '#0284c7', false)}
+
+                <!-- Terminal A & B -->
+                <circle cx="390" cy="65" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                <text x="390" y="50" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">A</text>
+                <circle cx="390" cy="225" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="2.5"/>
+                <text x="390" y="246" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">B</text>
+
+                ${noStep === 'orig' ? `
+                    <polyline points="390,65 495,65 495,225 390,225" fill="none" stroke="#334155" stroke-width="3.5"/>
+                    <line x1="495" y1="75" x2="495" y2="215" stroke="#10b981" stroke-width="3.5" class="flow-cw"/>
+                    ${svgResistorV(495, 145, 'RL', `${RL}Ω`, '#dcfce7', '#059669', true)}
+                ` : ''}
+
+                ${noStep === 'in' ? `
+                    <!-- Kawat Short Circuit pada A-B -->
+                    <polyline points="390,65 465,65 465,225 390,225" fill="none" stroke="#e11d48" stroke-width="4"/>
+                    <line x1="465" y1="72" x2="465" y2="218" stroke="#f59e0b" stroke-width="4" class="flow-cw"/>
+                    <rect x="422" y="122" width="135" height="44" rx="10" fill="#ffe4e6" stroke="#e11d48" stroke-width="2"/>
+                    <text x="489" y="140" text-anchor="middle" font-size="10" font-weight="bold" fill="#9f1239">Short Circuit A–B</text>
+                    <text x="489" y="157" text-anchor="middle" font-size="12" font-family="JetBrains Mono" font-weight="bold" fill="#be123c">IN = ${IN.toFixed(2)} A ↓</text>
+                ` : ''}
+
+                ${noStep === 'rn' ? `
+                    <rect x="420" y="122" width="145" height="44" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+                    <text x="492" y="140" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e293b">Ohmmeter A–B</text>
+                    <text x="492" y="157" text-anchor="middle" font-size="12" font-family="JetBrains Mono" font-weight="bold" fill="#0369a1">RN = ${RN.toFixed(2)} Ω</text>
+                ` : ''}
+            `;
+        }
+
+        // =========================================================================
+        // 6. LOGIKA TAB 5: LATIHAN SOAL NUMERIK ACAK (4 METODE)
+        // =========================================================================
+        let practiceProblems = [];
+
+        function generateRandomPractice() {
+            // 1. Soal Mesh
+            const mV1 = [20, 24, 30, 36][Math.floor(Math.random() * 4)];
+            const mV2 = [10, 12, 15, 18][Math.floor(Math.random() * 4)];
+            const mR1 = 4, mR2 = 6, mR3 = 8;
+            const det = (mR1 + mR3) * (mR2 + mR3) - mR3 * mR3;
+            const mI1 = (mV1 * (mR2 + mR3) - (-mV2) * (-mR3)) / det;
+
+            // 2. Soal Superposisi
+            const sV1 = [12, 18, 24, 30][Math.floor(Math.random() * 4)];
+            const sV2 = [6, 12, 18][Math.floor(Math.random() * 3)];
+            const sR1 = 6, sR2 = 6, sR3 = 3;
+            const sI3a = (sV1 / (sR1 + (sR2 * sR3) / (sR2 + sR3))) * (sR2 / (sR2 + sR3));
+            const sI3b = (sV2 / (sR2 + (sR1 * sR3) / (sR1 + sR3))) * (sR1 / (sR1 + sR3));
+            const sI3 = sI3a + sI3b;
+
+            // 3. Soal Thevenin
+            const tVs = [24, 30, 36, 48][Math.floor(Math.random() * 4)];
+            const tR1 = 6, tR2 = 12, tRL = 6;
+            const tVth = tVs * (tR2 / (tR1 + tR2));
+            const tRth = (tR1 * tR2) / (tR1 + tR2);
+            const tIL = tVth / (tRth + tRL);
+
+            // 4. Soal Norton
+            const nVs = [18, 24, 30, 42][Math.floor(Math.random() * 4)];
+            const nR1 = 6, nR2 = 12, nRL = 4;
+            const nIN = nVs / nR1;
+            const nRN = (nR1 * nR2) / (nR1 + nR2);
+            const nIL = nIN * (nRN / (nRN + nRL));
+
+            practiceProblems = [
+                {
+                    tag: 'Soal 1 • Metode Mesh',
+                    badgeClass: 'bg-pastel-lavender text-purple-900',
+                    question: `Pada rangkaian 2-loop T-bridge dengan sumber V₁ = ${mV1} V, V₂ = ${mV2} V, R₁ = ${mR1} Ω, R₂ = ${mR2} Ω, dan resistor bersama R₃ = ${mR3} Ω, hitunglah besar arus loop pertama (I₁) dalam satuan Ampere!`,
+                    unit: 'A',
+                    answer: mI1,
+                    solution: `Persamaan KVL Loop 1: (4 + 8)I₁ − 8I₂ = ${mV1} → 12I₁ − 8I₂ = ${mV1}. Persamaan Loop 2: −8I₁ + (6 + 8)I₂ = −${mV2} → −8I₁ + 14I₂ = −${mV2}. Dengan determinan Δ = 104, diperoleh I₁ = (${mV1}×14 − ${mV2}×8) / 104 = ${mI1.toFixed(2)} A.`
+                },
+                {
+                    tag: 'Soal 2 • Teorema Superposisi',
+                    badgeClass: 'bg-pastel-babyblue text-sky-900',
+                    question: `Sebuah rangkaian dua sumber memiliki V₁ = ${sV1} V, V₂ = ${sV2} V, R₁ = ${sR1} Ω, R₂ = ${sR2} Ω, dan R₃ = ${sR3} Ω di cabang tengah. Dengan prinsip superposisi, berapakah arus total I₃ yang mengalir pada R₃?`,
+                    unit: 'A',
+                    answer: sI3,
+                    solution: `Saat V₁ aktif (V₂ short): Rp1 = 6∥3 = 2 Ω, Itot1 = ${sV1}/(6+2) = ${(sV1/8).toFixed(2)} A, sehingga I₃' = ${(sV1/8).toFixed(2)} × (6/9) = ${sI3a.toFixed(2)} A. Saat V₂ aktif (V₁ short): I₃'' = ${(sV2/8).toFixed(2)} × (6/9) = ${sI3b.toFixed(2)} A. Total I₃ = I₃' + I₃'' = ${sI3.toFixed(2)} A.`
+                },
+                {
+                    tag: 'Soal 3 • Teorema Thevenin',
+                    badgeClass: 'bg-pastel-mint text-emerald-900',
+                    question: `Diketahui sumber tegangan Vs = ${tVs} V terhubung seri dengan R₁ = ${tR1} Ω dan paralel dengan R₂ = ${tR2} Ω pada terminal A–B. Jika terminal A–B dihubungkan ke beban RL = ${tRL} Ω, hitunglah arus beban IL menggunakan ekivalen Thevenin!`,
+                    unit: 'A',
+                    answer: tIL,
+                    solution: `Vth = ${tVs} × [12 / (6 + 12)] = ${tVth.toFixed(2)} V. Rth = 6 ∥ 12 = (6×12)/(6+12) = ${tRth.toFixed(2)} Ω. Arus beban IL = Vth / (Rth + RL) = ${tVth.toFixed(2)} / (${tRth.toFixed(2)} + ${tRL}) = ${tIL.toFixed(2)} A.`
+                },
+                {
+                    tag: 'Soal 4 • Teorema Norton',
+                    badgeClass: 'bg-pastel-coral text-rose-900',
+                    question: `Sebuah jaringan sumber memiliki Vs = ${nVs} V, R₁ = ${nR1} Ω, dan R₂ = ${nR2} Ω. Tentukan arus beban IL jika terminal A–B dihubungkan dengan resistor beban RL = ${nRL} Ω menggunakan metode Norton!`,
+                    unit: 'A',
+                    answer: nIL,
+                    solution: `Saat A–B di-short: IN = Vs / R₁ = ${nVs} / ${nR1} = ${nIN.toFixed(2)} A. Hambatan Norton RN = 6 ∥ 12 = ${nRN.toFixed(2)} Ω. Dengan pembagi arus: IL = IN × [RN / (RN + RL)] = ${nIN.toFixed(2)} × [${nRN.toFixed(2)} / (${nRN.toFixed(2)} + ${nRL})] = ${nIL.toFixed(2)} A.`
+                }
+            ];
+
+            renderPracticeCards();
+        }
+
+        function renderPracticeCards() {
+            const container = document.getElementById('practice-cards-container');
+            container.innerHTML = '';
+
+            practiceProblems.forEach((prob, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="${prob.badgeClass} border text-xs font-extrabold px-3 py-1 rounded-full">${prob.tag}</span>
+                        <span class="text-xs font-mono-math text-slate-400">Toleransi ±0.05</span>
+                    </div>
+                    <p class="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed">${prob.question}</p>
+                    <div class="flex flex-wrap items-center gap-2.5 pt-1">
+                        <div class="flex items-center bg-white border-2 border-slate-300 focus-within:border-indigo-500 rounded-xl px-3 py-1.5 w-44">
+                            <input type="number" step="0.01" id="prac-input-${idx}" placeholder="Contoh: 2.50" class="w-full font-mono-math text-sm font-bold text-slate-900 focus:outline-none">
+                            <span class="text-xs font-bold text-slate-500 ml-1">${prob.unit}</span>
+                        </div>
+                        <button onclick="checkPracticeAnswer(${idx})" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition">
+                            Periksa Jawaban
+                        </button>
+                    </div>
+                    <div id="prac-fb-${idx}" class="hidden p-3.5 rounded-xl text-xs leading-relaxed"></div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function checkPracticeAnswer(idx) {
+            const prob = practiceProblems[idx];
+            const inputVal = parseFloat(document.getElementById(`prac-input-${idx}`).value);
+            const fb = document.getElementById(`prac-fb-${idx}`);
+            fb.classList.remove('hidden');
+
+            if (isNaN(inputVal)) {
+                fb.className = "p-3.5 rounded-xl text-xs leading-relaxed bg-amber-100 border border-amber-300 text-amber-950 font-semibold";
+                fb.innerHTML = "Silakan masukkan angka jawaban terlebih dahulu (gunakan tanda titik untuk desimal, misal 2.75).";
+                return;
+            }
+
+            const isCorrect = Math.abs(inputVal - prob.answer) <= 0.05;
+            if (isCorrect) {
+                fb.className = "p-3.5 rounded-xl text-xs leading-relaxed bg-emerald-100 border border-emerald-300 text-emerald-950";
+                fb.innerHTML = `<strong>✓ Jawaban Tepat (${prob.answer.toFixed(2)} ${prob.unit})!</strong><br><span class="font-mono-math mt-1 block text-emerald-900">${prob.solution}</span>`;
+            } else {
+                fb.className = "p-3.5 rounded-xl text-xs leading-relaxed bg-rose-100 border border-rose-300 text-rose-950";
+                fb.innerHTML = `<strong>✕ Belum Tepat.</strong> Jawaban yang benar adalah <strong>${prob.answer.toFixed(2)} ${prob.unit}</strong>.<br><span class="font-mono-math mt-1 block text-rose-900">${prob.solution}</span>`;
+            }
+        }
+
+        // Inisialisasi Semua Modul Saat Halaman Dimuat
+        window.onload = function() {
+            updateMesh();
+            updateSuperposisi();
+            updateThevenin();
+            updateNorton();
+            generateRandomPractice();
+        };
+    </script>
+</body>
+</html>
